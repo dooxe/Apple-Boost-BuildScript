@@ -77,6 +77,9 @@ MACOS_DEV_CMD="xcrun --sdk macosx"
 
 BUILD_VARIANT=release
 
+OUTPUT_DIR="$CURRENT_DIR/build/boost/$BOOST_VERSION"
+INSTALL_PREFIX="$OUTPUT_DIR"
+
 #===============================================================================
 # Functions
 #===============================================================================
@@ -411,6 +414,20 @@ parseArgs()
                 HEADER_ROOT=1
                 ;;
 
+            --output-dir)
+                if [ -n $2 ]; then
+                    OUTPUT_DIR=$2
+                    shift
+                fi
+                ;;
+
+            --install-prefix)
+                if [ -n $2 ]; then
+                    INSTALL_PREFIX=$2
+                    shift
+                fi
+                ;;
+
             -j | --threads)
                 if [ -n $2 ]; then
                     THREADS="-j$2"
@@ -648,20 +665,21 @@ buildBoost_iOS()
     echo Building Boost for iPhone
     # Install this one so we can copy the headers for the frameworks...
     ./b2 $THREADS --build-dir=iphone-build --stagedir=iphone-build/stage \
-        --prefix="$IOS_OUTPUT_DIR/prefix" toolset=darwin \
+        --prefix="$INSTALL_PREFIX" toolset=darwin \
         cxxflags="${CXX_FLAGS} ${IOS_ARCH_FLAGS}" architecture=arm target-os=iphone linkflags="-stdlib=libc++" \
         macosx-version=iphone-${IOS_SDK_VERSION} define=_LITTLE_ENDIAN \
         link=static variant=${BUILD_VARIANT} stage >> "${IOS_OUTPUT_DIR}/ios-build.log" 2>&1
     if [ $? != 0 ]; then echo "Error staging iPhone. Check log."; exit 1; fi
 
     ./b2 $THREADS --build-dir=iphone-build --stagedir=iphone-build/stage \
-        --prefix="$IOS_OUTPUT_DIR/prefix" toolset=darwin \
+        --prefix="$INSTALL_PREFIX" toolset=darwin \
         cxxflags="${CXX_FLAGS} ${IOS_ARCH_FLAGS}" architecture=arm linkflags="-stdlib=libc++" \
         target-os=iphone macosx-version=iphone-${IOS_SDK_VERSION} \
         define=_LITTLE_ENDIAN link=static variant=${BUILD_VARIANT} install >> "${IOS_OUTPUT_DIR}/ios-build.log" 2>&1
     if [ $? != 0 ]; then echo "Error installing iPhone. Check log."; exit 1; fi
     doneSection
 
+<<EOF
     echo Building Boost for iPhoneSimulator
     ./b2 $THREADS --build-dir=iphonesim-build --stagedir=iphonesim-build/stage \
         toolset=darwin-${IOS_SDK_VERSION}~iphonesim \
@@ -669,6 +687,8 @@ buildBoost_iOS()
         target-os=iphone macosx-version=iphonesim-${IOS_SDK_VERSION} \
         link=static variant=${BUILD_VARIANT} stage >> "${IOS_OUTPUT_DIR}/ios-build.log" 2>&1
     if [ $? != 0 ]; then echo "Error staging iPhoneSimulator. Check log."; exit 1; fi
+EOF
+
     doneSection
 }
 
@@ -1102,7 +1122,6 @@ EXTRA_MACOS_SDK_FLAGS="-isysroot ${MACOS_SDK_PATH} -mmacosx-version-min=${MIN_MA
 BOOST_VERSION2="${BOOST_VERSION//./_}"
 BOOST_TARBALL="$CURRENT_DIR/boost_$BOOST_VERSION2.tar.bz2"
 BOOST_SRC="$SRCDIR/boost_${BOOST_VERSION2}"
-OUTPUT_DIR="$CURRENT_DIR/build/boost/$BOOST_VERSION"
 IOS_OUTPUT_DIR="$OUTPUT_DIR/ios/$BUILD_VARIANT"
 TVOS_OUTPUT_DIR="$OUTPUT_DIR/tvos/$BUILD_VARIANT"
 MACOS_OUTPUT_DIR="$OUTPUT_DIR/macos/$BUILD_VARIANT"
